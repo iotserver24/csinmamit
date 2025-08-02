@@ -6,6 +6,7 @@ import { api } from "~/utils/api";
 import "~/styles/globals.css";
 import { Navbar } from "~/components/layout/navbar";
 import Footer from "~/components/layout/footer";
+import { AuthProvider } from "~/lib/auth-context";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -19,11 +20,13 @@ const MyApp: AppType<{ session: Session | null }> = ({
 }) => {
   return (
     <SessionProvider session={session}>
-      <main className={`${poppins.className}`}>
-        <Navbar />
-        <Component {...pageProps} />
-        <Footer />
-      </main>
+      <AuthProvider>
+        <main className={`${poppins.className}`}>
+          <Navbar />
+          <Component {...pageProps} />
+          <Footer />
+        </main>
+      </AuthProvider>
     </SessionProvider>
   );
 };

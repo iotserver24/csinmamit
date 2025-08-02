@@ -4,6 +4,9 @@ import { userRouter } from "./routers/user";
 import { coreRouter } from "./routers/core";
 import { teamRouter } from "./routers/team";
 import { recruitRouter } from "./routers/recruit";
+import { firebaseCoreRouter } from "./routers/firebase-core";
+import { firebaseUserRouter } from "./routers/firebase-user";
+import { firebaseRecruitRouter } from "./routers/firebase-recruit";
 /**
  * This is the primary router for your server.
  *
@@ -11,10 +14,16 @@ import { recruitRouter } from "./routers/recruit";
  */
 export const appRouter = createTRPCRouter({
   post: postRouter,
-  user : userRouter,
+  user: userRouter,
   core: coreRouter,
   team: teamRouter,
-  recruit: recruitRouter
+  recruit: recruitRouter,
+  // Firebase-based routers
+  firebase: createTRPCRouter({
+    core: firebaseCoreRouter,
+    user: firebaseUserRouter,
+    recruit: firebaseRecruitRouter,
+  }),
 });
 
 // export type definition of API

@@ -1,0 +1,148 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check file size (max 10MB)
+    function isValidFileSize() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+    
+    // Helper function to check if file is an image
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Helper function to check if file is a document
+    function isDocument() {
+      return request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('application/msword') ||
+             request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.*') ||
+             request.resource.contentType.matches('text/.*');
+    }
+
+    // Public images (event images, core team photos, etc.)
+    match /images/{allPaths=**} {
+      // Anyone can read public images
+      allow read: if true;
+      
+      // Authenticated users can upload images
+      allow write: if isAuthenticated() && isImage() && isValidFileSize();
+      
+      // Admins can delete any image
+      allow delete: if isAdmin();
+    }
+
+    // User avatars
+    match /avatars/{userId}/{allPaths=**} {
+      // Anyone can read avatars
+      allow read: if true;
+      
+      // Users can upload their own avatar
+      allow write: if isAuthenticated() && 
+                   request.auth.uid == userId && 
+                   isImage() && 
+                   isValidFileSize();
+      
+      // Users can delete their own avatar
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Admins can manage any avatar
+      allow write, delete: if isAdmin();
+    }
+
+    // Event-specific images
+    match /events/{eventId}/images/{allPaths=**} {
+      // Anyone can read event images
+      allow read: if true;
+      
+      // Authenticated users can upload event images
+      allow write: if isAuthenticated() && isImage() && isValidFileSize();
+      
+      // Admins can delete event images
+      allow delete: if isAdmin();
+    }
+
+    // Documents (PDFs, forms, etc.)
+    match /documents/{allPaths=**} {
+      // Authenticated users can read documents
+      allow read: if isAuthenticated();
+      
+      // Only admins can upload documents
+      allow write: if isAdmin() && isDocument() && isValidFileSize();
+      
+      // Only admins can delete documents
+      allow delete: if isAdmin();
+    }
+
+    // Team submission files
+    match /teams/{teamId}/submissions/{allPaths=**} {
+      // Team members can read their own submissions
+      allow read: if isAuthenticated();
+      
+      // Team members can upload submissions
+      allow write: if isAuthenticated() && isValidFileSize();
+      
+      // Team members can delete their own submissions
+      allow delete: if isAuthenticated();
+      
+      // Admins can manage all submissions
+      allow write, delete: if isAdmin();
+    }
+
+    // Recruitment documents
+    match /recruits/{recruitId}/documents/{allPaths=**} {
+      // Only admins can read recruit documents
+      allow read: if isAdmin();
+      
+      // Anyone can upload documents during recruitment
+      allow write: if isDocument() && isValidFileSize();
+      
+      // Only admins can delete recruit documents
+      allow delete: if isAdmin();
+    }
+
+    // Temporary uploads (for processing)
+    match /temp/{userId}/{allPaths=**} {
+      // Users can manage their own temp files
+      allow read, write, delete: if isAuthenticated() && 
+                                  request.auth.uid == userId && 
+                                  isValidFileSize();
+      
+      // Admins can manage any temp files
+      allow read, write, delete: if isAdmin();
+    }
+
+    // Backup files
+    match /backups/{allPaths=**} {
+      // Only admins can access backups
+      allow read, write, delete: if isAdmin();
+    }
+
+    // General uploads (fallback)
+    match /uploads/{userId}/{allPaths=**} {
+      // Users can manage their own uploads
+      allow read, write, delete: if isAuthenticated() && 
+                                  request.auth.uid == userId && 
+                                  isValidFileSize();
+      
+      // Admins can manage any uploads
+      allow read, write, delete: if isAdmin();
+    }
+
+    // Deny all other access
+    match /{allPaths=**} {
+      allow read, write, delete: if false;
+    }
+  }
+} 
